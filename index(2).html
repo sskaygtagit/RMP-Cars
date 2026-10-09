@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RMRP — Автопарк сервера</title>
+<link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Montserrat:wght@500;600;700;800&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{--bg:#08060f;--panel:#0f0c1a;--card:#13101f;--line:#27223a;--red:#8B5CF6;--red-hi:#C084FC;--glow:rgba(139,92,246,.38);--blue:#3B82F6;--pink:#EC4899;--grad:linear-gradient(120deg,#8B5CF6 0%,#3B82F6 50%,#EC4899 100%);--text:#F4F4F6;--muted:#8E8E9A;--side:268px}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Montserrat',sans-serif;min-height:100vh;
+  background-image:repeating-linear-gradient(135deg,transparent 0 22px,rgba(255,255,255,.012) 22px 23px)}
+button{font-family:inherit}
+:focus-visible{outline:2px solid var(--red-hi);outline-offset:2px}
+
+/* SIDEBAR */
+.side{position:fixed;inset:0 auto 0 0;width:var(--side);background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;z-index:20}
+.logo{padding:26px 22px 20px;border-bottom:1px solid var(--line);position:relative}
+.logo::after{content:"";position:absolute;left:0;bottom:-1px;width:90px;height:3px;background:var(--red);box-shadow:0 0 14px var(--glow)}
+.logo b{display:block;font-family:'Russo One',sans-serif;font-size:2.3rem;line-height:1;letter-spacing:2px;color:var(--text)}
+.logo b em{font-style:normal;color:var(--red-hi)}
+.logo small{display:block;margin-top:8px;font-size:.72rem;font-weight:700;color:var(--muted);letter-spacing:.14em;text-transform:uppercase}
+.cats{flex:1;overflow-y:auto;padding:12px 10px 20px;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.cat-btn{width:100%;display:flex;align-items:center;gap:12px;padding:10px 12px;margin-bottom:2px;background:none;border:0;border-left:3px solid transparent;color:var(--muted);font-size:.86rem;font-weight:700;text-align:left;cursor:pointer;transition:.18s;border-radius:0 8px 8px 0}
+.cat-btn i{width:18px;text-align:center;font-size:.95rem}
+.cat-btn .n{margin-left:auto;font-family:'Roboto Mono',monospace;font-size:.72rem;color:#5d5d68}
+.cat-btn:hover{background:var(--card);color:var(--text)}
+.cat-btn.active{background:linear-gradient(90deg,rgba(139,92,246,.22),transparent);border-left-color:var(--red-hi);color:#fff}
+.cat-btn.active .n{color:var(--red-hi)}
+
+/* MAIN */
+main{margin-left:var(--side);padding:0 32px 40px}
+.top{position:sticky;top:0;z-index:10;display:flex;flex-wrap:wrap;align-items:center;gap:16px;padding:20px 0 16px;background:linear-gradient(var(--bg) 78%,transparent)}
+.sechead{font-family:'Russo One',sans-serif;font-size:1.5rem;letter-spacing:1px;flex:1 1 220px}
+.title span{color:var(--red-hi)}
+.search{position:relative;flex:2 1 320px;max-width:520px}
+.search input{width:100%;padding:13px 16px 13px 46px;background:var(--panel);border:1px solid var(--line);color:#fff;font:600 .92rem 'Montserrat',sans-serif;outline:none;clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,0 100%);transition:.2s}
+.search input:focus{border-color:var(--red);box-shadow:0 0 0 1px var(--red)}
+.search i{position:absolute;left:17px;top:50%;transform:translateY(-50%);color:var(--red-hi)}
+.countx{font-size:.8rem;font-weight:700;color:var(--muted);white-space:nowrap}
+.count b{color:#fff;font-family:'Roboto Mono',monospace}
+
+/* GRID */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:20px;margin-top:8px}
+.card{background:var(--card);border:1px solid var(--line);position:relative;display:flex;flex-direction:column;transition:transform .2s,border-color .2s,box-shadow .2s;clip-path:polygon(0 0,calc(100% - 22px) 0,100% 22px,100% 100%,0 100%)}
+.card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--red);transform:scaleY(0);transform-origin:top;transition:transform .25s;z-index:3}
+.card:hover{transform:translateY(-4px);border-color:#3b2a66;box-shadow:0 14px 30px rgba(0,0,0,.6)}
+.card:hover::before{transform:scaleY(1)}
+.photo{height:176px;display:flex;align-items:center;justify-content:center;padding:14px;position:relative;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 85%,rgba(139,92,246,.22),transparent 60%),linear-gradient(#18181d,#0e0e11);border-bottom:1px solid var(--line)}
+.photo.loading::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.06) 50%,transparent 70%);animation:sh 1.3s infinite}
+@keyframes sh{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+.photo img{max-width:100%;max-height:100%;object-fit:contain;filter:drop-shadow(0 10px 12px rgba(0,0,0,.65));transition:transform .35s}
+.card:hover .photo img{transform:scale(1.07)}
+.nophoto{display:flex;flex-direction:column;align-items:center;gap:6px;color:#3a3a44;font-size:2.4rem}
+.nophoto span{font-size:.68rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+.tag{position:absolute;top:12px;left:14px;font-size:.66rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:rgba(9,9,11,.8);padding:4px 9px;border-left:2px solid var(--red);z-index:2}
+.info{padding:16px 16px 18px;display:flex;flex-direction:column;gap:14px;flex:1;justify-content:space-between}
+.name{font-weight:800;font-size:1.02rem;line-height:1.3}
+/* ID как номерной знак */
+.plate{display:flex;align-items:stretch;background:#f1efe6;border:2px solid #111;border-radius:6px;overflow:hidden;cursor:pointer;transition:.15s;box-shadow:0 0 0 1px #000}
+.plate:hover{box-shadow:0 0 0 1px #000,0 0 16px var(--glow)}
+.plate .reg{background:#1b3a8a;color:#fff;font:800 .55rem 'Montserrat',sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 7px;line-height:1.15;letter-spacing:.04em}
+.plate .code{flex:1;color:#111;font:700 1.02rem 'Roboto Mono',monospace;text-transform:uppercase;padding:9px 10px;text-align:center;overflow-wrap:anywhere}
+.plate .cp{background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;padding:0 13px;font-size:.85rem;transition:.15s}
+.plate:hover .cp{background:var(--red-hi)}
+
+/* COLORS */
+.colors{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:18px;margin-top:8px}
+.color{background:var(--card);border:1px solid var(--line);cursor:pointer;transition:.2s}
+.color:hover{border-color:var(--red);transform:translateY(-3px)}
+.color .sw{height:104px;display:flex;align-items:center;justify-content:center;font:700 1.05rem 'Roboto Mono',monospace}
+.color .cn{padding:12px;text-align:center;font-weight:700;font-size:.88rem}
+
+.more{display:block;margin:30px auto 0;padding:14px 38px;background:var(--red);color:#fff;border:0;font-weight:800;font-size:.9rem;cursor:pointer;clip-path:polygon(14px 0,100% 0,calc(100% - 14px) 100%,0 100%);transition:.2s}
+.more:hover{background:var(--red-hi);box-shadow:0 0 24px var(--glow)}
+.empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:70px 0;font-weight:700}
+footer{margin-top:50px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:.78rem;font-weight:600;text-align:center}
+#toast{position:fixed;right:28px;bottom:28px;background:var(--red);color:#fff;padding:14px 22px;font-weight:700;display:flex;gap:10px;align-items:center;transform:translateY(140px);transition:.3s cubic-bezier(.2,.9,.3,1.2);z-index:99;clip-path:polygon(0 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%)}
+#toast.show{transform:none}
+
+@media(max-width:860px){
+  :root{--side:0px}
+  .side{position:static;width:auto;border-right:0;border-bottom:1px solid var(--line)}
+  .logo{padding:18px 18px 14px}.logo b{font-size:1.8rem}
+  .cats{display:flex;overflow-x:auto;padding:10px;gap:6px}
+  .cat-btn{width:auto;flex:none;white-space:nowrap;border:1px solid var(--line);border-radius:8px;margin:0}
+  .cat-btn.active{border-color:var(--red)}
+  main{padding:0 16px 30px}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.hero{margin:22px 0 6px;padding:26px 28px;background:linear-gradient(120deg,#150a2e 0%,var(--panel) 55%);border:1px solid var(--line);border-left:4px solid var(--red);display:flex;flex-wrap:wrap;gap:22px;justify-content:space-between;align-items:center;position:relative;overflow:hidden;clip-path:polygon(0 0,calc(100% - 28px) 0,100% 28px,100% 100%,0 100%)}
+.hero::after{content:"";position:absolute;right:-40px;top:0;bottom:0;width:260px;background:repeating-linear-gradient(115deg,rgba(139,92,246,.16) 0 14px,transparent 14px 30px);pointer-events:none}
+.hero h1{font-family:'Russo One',sans-serif;font-size:2.3rem;letter-spacing:1px;line-height:1.1}
+.hero h1 span{color:var(--red-hi)}
+.hero p{color:var(--muted);font-weight:600;font-size:.9rem;margin-top:8px;max-width:520px}
+.stats{display:flex;gap:12px;position:relative;z-index:1}
+.stats div{background:rgba(9,9,11,.7);border:1px solid var(--line);padding:12px 18px;min-width:110px}
+.stats b{display:block;font:700 1.7rem 'Roboto Mono',monospace;color:#fff}
+.stats span{font-size:.7rem;font-weight:700;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.tools{display:flex;flex-wrap:wrap;gap:12px;align-items:center;flex:1}
+select,.tbtn{background:var(--panel);color:var(--text);border:1px solid var(--line);padding:12px 14px;font:700 .82rem 'Montserrat',sans-serif;cursor:pointer;outline:none}
+select:focus,.tbtn:hover{border-color:var(--red)}
+.tbtn{display:flex;gap:8px;align-items:center}
+.sechead{font-family:'Russo One',sans-serif;font-size:1.25rem;margin:18px 0 4px;display:flex;align-items:baseline;gap:12px}
+.sechead small{font:700 .8rem 'Roboto Mono',monospace;color:var(--red-hi)}
+.dlc{position:absolute;right:10px;bottom:10px;background:var(--red);color:#fff;font-size:.62rem;font-weight:800;padding:3px 8px;max-width:70%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:2}
+.meta{display:flex;justify-content:space-between;align-items:center;gap:8px;font:600 .72rem 'Roboto Mono',monospace;color:var(--muted)}
+.hash{background:none;border:1px dashed #34343c;color:var(--muted);padding:4px 8px;font:inherit;cursor:pointer;transition:.15s}
+.hash:hover{color:#fff;border-color:var(--red)}
+.photo{background-image:radial-gradient(ellipse at 50% 90%,rgba(139,92,246,.25),transparent 62%),repeating-linear-gradient(90deg,transparent 0 31px,rgba(255,255,255,.025) 31px 32px),linear-gradient(#18181d,#0e0e11)}
+
+body{background-image:radial-gradient(900px 500px at 8% -5%,rgba(139,92,246,.18),transparent 60%),radial-gradient(800px 500px at 100% 0%,rgba(236,72,153,.13),transparent 60%),radial-gradient(700px 600px at 60% 110%,rgba(59,130,246,.12),transparent 60%)}
+.logo b em,.hero h1 span{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.logo::after,.card::before,.dlc,.plate .cp,.more,#toast{background:var(--grad)}
+.plate:hover .cp,.more:hover{filter:brightness(1.15);background:var(--grad)}
+.hero{border-left-color:transparent;box-shadow:inset 4px 0 0 #8B5CF6,inset 0 0 0 1px rgba(255,255,255,.02)}
+.hero::after{background:repeating-linear-gradient(115deg,rgba(139,92,246,.2) 0 14px,rgba(236,72,153,.1) 14px 18px,transparent 18px 30px)}
+.cat-btn.active{background:linear-gradient(90deg,rgba(139,92,246,.28),rgba(236,72,153,.08),transparent);border-left-color:#EC4899}
+.cat-btn.active .n,.sechead small{color:#F472B6}
+.search input:focus{border-color:#8B5CF6;box-shadow:0 0 0 1px #8B5CF6,0 0 18px rgba(236,72,153,.2)}
+.btn-copy,.hash:hover{border-color:#EC4899}
+.card:hover{box-shadow:0 14px 30px rgba(0,0,0,.6),0 0 22px rgba(139,92,246,.22)}
+</style>
+</head>
+<body>
+<aside class="side">
+  <div class="logo"><b>RM<em>RP</em></b><small>Автопарк сервера · RAGE MP</small></div>
+  <nav class="cats" id="cats"></nav>
+</aside>
+<main>
+  <section class="hero">
+    <div><h1>Автопарк <span>RMRP</span></h1><p>Весь транспорт RAGE MP: ID для спавна, хэш и фото. Нажми на номерной знак, чтобы скопировать ID.</p></div>
+    <div class="stats"><div><b id="sTotal">0</b><span>моделей</span></div><div><b id="sCats">0</b><span>классов</span></div><div><b id="cnt">0</b><span>показано</span></div></div>
+  </section>
+  <div class="top">
+    <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input id="q" type="search" placeholder="Название или ID: adder, pbus2, police…" autocomplete="off"></div>
+      </div>
+  <h2 class="sechead" id="title"></h2>
+  <div id="view"></div>
+  <footer>RMRP &copy; 2024 · Данные и фото: RAGE MP Wiki</footer>
+</main>
+<div id="toast"><i class="fa-solid fa-circle-check"></i><span id="tt"></span></div>
+<script>
+const LOCAL_IMG = ""; /* свои фото: "img/{id}" (см. download_photos.py) */
+const PAGE = 48;
+/* [ключ, название, иконка, раздел на wiki, ID машин] — запасной список, если wiki недоступна */
+const CATS = [["boats","Лодки","fa-sailboat","Boats","avisa dinghy dinghy2 dinghy3 dinghy4 dinghy5 jetmax kosatka longfin marquis patrolboat seashark seashark2 seashark3 speeder speeder2 squalo submersible submersible2 suntrap toro toro2 tropic tropic2 tug"],["commercials","Коммерческие","fa-truck-field","Commercials","benson benson2 biff cerberus cerberus2 cerberus3 hauler hauler2 mule mule2 mule3 mule4 mule5 packer phantom phantom2 phantom3 phantom4 pounder pounder2 stockade stockade3 terbyte"],["compacts","Компакты","fa-car-side","Compacts","asbo blista brioso brioso2 brioso3 club dilettante dilettante2 kanjo issi2 issi3 issi4 issi5 issi6 panto prairie rhapsody weevil"],["coupes","Купе","fa-car-rear","Coupes","cogcabrio exemplar f620 felon felon2 jackal kanjosj oracle oracle2 postlude previon sentinel sentinel2 windsor windsor2 zion zion2"],["cycles","Велосипеды","fa-bicycle","Cycles","bmx cruiser fixter scorcher tribike tribike2 tribike3"],["emergency","Экстренные службы","fa-truck-medical","Emergency","ambulance fbi fbi2 firetruk lguard pbus police police2 police3 police4 policeb polmav policeold1 policeold2 policet pranger predator riot riot2 sheriff sheriff2"],["helicopters","Вертолёты","fa-helicopter","Helicopters","akula annihilator annihilator2 buzzard buzzard2 cargobob cargobob2 cargobob3 cargobob4 conada frogger frogger2 havok hunter maverick savage seasparrow seasparrow2 seasparrow3 skylift supervolito supervolito2 swift swift2 valkyrie valkyrie2 volatus"],["industrial","Индустриальные","fa-trowel-bricks","Industrial","bulldozer cutter dump flatbed guardian handler mixer mixer2 rubble tiptruck tiptruck2"],["military","Военные","fa-shield-halved","Military","apc barracks barracks2 barracks3 barrage chernobog crusader halftrack khanjali minitank rhino scarab scarab2 scarab3 thruster trailersmall2 vetir"],["motorcycles","Мотоциклы","fa-motorcycle","Motorcycles","akuma avarus bagger bati bati2 bf400 carbonrs chimera cliffhanger daemon daemon2 defiler deathbike deathbike2 deathbike3 diablous diablous2 double enduro esskey faggio faggio2 faggio3 fcr fcr2 gargoyle hakuchou hakuchou2 hexer innovation lectro manchez manchez2 manchez3 nemesis nightblade oppressor oppressor2 pcj powersurge ratbike reever ruffian rrocket sanchez sanchez2 sanctus shinobi shotaro sovereign stryder thrust vader vindicator vortex wolfsbane zombiea zombieb"],["muscle","Мускул-кары","fa-gauge-high","Muscle","blade broadway buccaneer buccaneer2 chino chino2 clique coquette3 deviant dominator dominator2 dominator3 dominator4 dominator5 dominator6 dominator7 dukes dukes2 dukes3 faction faction2 faction3 ellie eudora gauntlet gauntlet2 gauntlet3 gauntlet4 gauntlet5 greenwood hermes hotknife hustler impaler impaler2 impaler3 impaler4 imperator imperator2 imperator3 lurcher moonbeam moonbeam2 nightshade peyote2 phoenix picador ratloader ratloader2 ruiner ruiner2 ruiner3 ruiner4 sabregt sabregt2 slamvan slamvan2 slamvan3 slamvan4 slamvan5 slamvan6 stalion stalion2 tahoma tampa tampa3 tulip tulip2 vamos vigero vigero2 virgo virgo2 virgo3 voodoo voodoo2 weevil2 yosemite yosemite2 yosemite3"],["offroad","Внедорожники","fa-mountain","Off-Road","bfinjection bifta blazer blazer2 blazer3 blazer4 blazer5 bodhi2 brawler bruiser bruiser2 bruiser3 brutus brutus2 brutus3 caracara caracara2 dloader draugur dubsta3 dune dune2 dune3 dune4 dune5 everon freecrawler hellion insurgent insurgent2 insurgent3 kalahari kamacho marshall mesa3 monster monster3 monster4 monster5 menacer outlaw nightshark patriot3 rancherxl rancherxl2 rebel rebel2 rcbandito riata sandking sandking2 technical technical2 technical3 trophytruck trophytruck2 vagrant verus winky zhaba"],["openwheel","Формула","fa-flag-checkered","Open Wheel","formula formula2 openwheel1 openwheel2"],["planes","Самолёты","fa-plane","Planes","alkonost alphaz1 avenger avenger2 besra blimp blimp2 blimp3 bombushka cargoplane cargoplane2 cuban800 dodo duster howard hydra jet lazer luxor luxor2 mammatus microlight miljet mogul molotok nimbus nokota pyro rogue seabreeze shamal starling strikeforce stunt titan tula velum velum2 vestra volatol"],["suvs","Внедорожники SUV","fa-truck-pickup","SUVs","aleutian astron baller baller2 baller3 baller4 baller5 baller6 baller7 bjxl cavalcade cavalcade2 contender dubsta dubsta2 fq2 granger granger2 gresley habanero huntley issi8 iwagen jubilee landstalker landstalker2 mesa mesa2 novak patriot patriot2 radi rebla rocoto seminole seminole2 serrano squaddie toros xls xls2"],["sedans","Седаны","fa-car","Sedans","asea asea2 asterope asterope2 cinquemila cog55 cog552 cognoscenti cognoscenti2 deity emperor emperor2 emperor3 fugitive glendale glendale2 ingot intruder limo2 premier primo primo2 regina rhinehart romero stafford stanier stratum stretch superd surge tailgater warrener washington tailgater2"],["service","Городской транспорт","fa-bus","Service","airbus brickade bus coach pbus2 rallytruck rentalbus taxi tourbus trash trash2 wastelander"],["sports","Спорткары","fa-bolt","Sports","alpha banshee bestiagts blista2 blista3 buffalo buffalo2 buffalo3 buffalo4 calico carbonizzare comet2 comet3 comet4 comet5 comet6 comet7 coquette coquette4 corsita cypher drafter elegy elegy2 euros feltzer2 flashgt furoregt fusilade futo futo2 gb200 growler hotring imorgon issi7 italigto italirsx jester jester2 jester3 jester4 jugular khamelion komoda kuruma kuruma2 locust lynx massacro massacro2 neo neon ninef ninef2 omnis omnisegt paragon paragon2 pariah penumbra penumbra2 raiden rapidgt rapidgt2 raptor remus revolter rt3000 ruston schafter2 schafter3 schafter4 schafter5 schafter6 schlagen schwarzer sentinel3 seven70 sm722 specter specter2 streiter sugoi sultan sultan2 sultan3 surano tampa2 tenf tenf2 tropos verlierer2 vectre vstr zr350 zr380 zr3802 zr3803"],["sportsclassic","Спорт-классика","fa-landmark","Sports Classic","ardent btype btype2 btype3 casco cheburek cheetah2 coquette2 deluxo dynasty fagaloa feltzer3 gt500 infernus2 jb700 jb7002 mamba manana manana2 michelli monroe nebula peyote peyote3 pigalle rapidgt3 retinue retinue2 savestra stinger stingergt stromberg swinger toreador torero torero2 tornado tornado2 tornado3 tornado4 tornado5 tornado6 turismo2 viseris z190 zion3 ztype"],["super","Суперкары","fa-rocket","Super","adder autarch banshee2 bullet champion cheetah cyclone cyclone2 deveste emerus entity2 entityxf fmj furia gp1 ignus infernus italigtb italigtb2 krieger le7b lm87 nero nero2 osiris penetrator pfister811 prototipo reaper s80 sc1 scramjet sheava sultanrs t20 taipan tempesta tezeract thrax tigon turismor tyrant tyrus vacca vagner vigilante virtue visione voltic voltic2 xa21 zentorno zorrusso"],["trailer","Прицепы","fa-trailer","Trailer","armytanker armytrailer armytrailer2 baletrailer boattrailer cablecar docktrailer freighttrailer graintrailer proptrailer raketrailer tr2 tr3 tr4 trflat tvtrailer tvtrailer2 tanker tanker2 trailerlarge trailerlogs trailers trailers2 trailers3 trailers4 trailersmall"],["trains","Поезда","fa-train","Trains","freight freightcar freightcont1 freightcont2 freightgrain metrotrain tankercar"],["utility","Утилитарные","fa-tractor","Utility","airtug caddy caddy2 caddy3 docktug forklift mower ripley sadler sadler2 scrap towtruck towtruck2 tractor tractor2 tractor3 utillitruck utillitruck2 utillitruck3"],["vans","Фургоны","fa-van-shuttle","Vans","bison bison2 bison3 boxville boxville2 boxville3 boxville4 boxville5 burrito burrito2 burrito3 burrito4 burrito5 camper gburrito gburrito2 journey minivan minivan2 paradise pony pony2 rumpo rumpo2 rumpo3 speedo speedo2 speedo4 surfer surfer2 taco youga youga2 youga3 youga4"]];
+const NAMES = {pbus2:"Festival Bus (Патибус)",dune4:"Ramp Buggy (Рампа)",phantom3:"Phantom Wedge (Клин)",deluxo:"Deluxo (Летающее авто)",oppressor2:"Oppressor Mk II (Ховербайк)",oppressor:"Oppressor (С крыльями)",scramjet:"Scramjet (Прыгун)",thruster:"Thruster (Джетпак)",vigilante:"Vigilante (Бэтмобиль)",voltic2:"Rocket Voltic (Буст)",ruiner2:"Ruiner 2000 (Парашют)",toreador:"Toreador (Подводная)",khanjali:"TM-02 Khanjali (Танк)",apc:"APC (Амфибия)",kosatka:"Kosatka (Подлодка)",trailersmall2:"AA Trailer (ПВО)",tanker:"Tanker (Цистерна)",trailers2:"Trailers II (Контейнер)",boattrailer:"Boat Trailer (Лодки)",banshee2:"Banshee 900R",elegy2:"Elegy RH8",jester4:"Jester RR",dubsta3:"Dubsta 6x6"};
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const titleOf = id => NAMES[id] || cap(id).replace(/(\D)(\d+)$/, "$1 $2");
+const esc = s => String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+const $ = id => document.getElementById(id);
+
+/* ---------- Данные с RAGE MP Wiki ---------- */
+const WIKI_BASE = "https://wiki.rage.mp";
+let WIKI = {};
+function parseWiki(html) {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const map = {}; let head = "";
+  doc.querySelectorAll("h2, img[alt^='Name:']").forEach(el => {
+    if (el.tagName === "H2") { head = el.textContent.replace(/\[.*?\]/g, "").trim(); return; }
+    const alt = el.getAttribute("alt") || "";
+    const id = (alt.split(/\s+/)[1] || "").toLowerCase();
+    let src = el.getAttribute("src") || "";
+    if (!id || !src || map[id]) return;
+    if (src.startsWith("//")) src = "https:" + src; else if (src.startsWith("/")) src = WIKI_BASE + src;
+    const full = src.includes("/thumb/") ? src.replace("/thumb/", "/").replace(/\/[^/]+$/, "") : src;
+    const m = alt.match(/Hash:\s*(0x[0-9A-Fa-f]+)(?:\s+DLC:\s*(.+))?$/);
+    map[id] = { full, thumb: src, cat: head, hash: m ? m[1].toUpperCase().replace("0X","0x") : "", dlc: m && m[2] ? m[2].trim() : "" };
+  });
+  return map;
+}
+async function loadWiki() {
+  try {
+    const c = JSON.parse(localStorage.getItem("rmrp_wiki3") || "null");
+    if (c && Date.now() - c.t < 6048e5 && Object.keys(c.m).length > 300) { WIKI = c.m; return true; }
+  } catch (e) {}
+  try {
+    const r = await fetch(WIKI_BASE + "/w/api.php?action=parse&page=Vehicles&prop=text&format=json&formatversion=2&origin=*");
+    const j = await r.json();
+    const m = parseWiki(j.parse.text);
+    if (Object.keys(m).length > 300) {
+      WIKI = m;
+      try { localStorage.setItem("rmrp_wiki3", JSON.stringify({ t: Date.now(), m })); } catch (e) {}
+      return true;
+    }
+  } catch (e) { console.warn("RAGE MP Wiki недоступна, использую встроенный список", e); }
+  return false;
+}
+
+
+/* Имена файлов на wiki, которые отличаются от ID */
+const FILES = {cogcabrio:"CogCabrio.png",fbi:"FBI.png",fbi2:"FBI2.png",firetruk:"FireTruck.png",lguard:"LGuard.png",pbus:"PBus.png",policeold1:"PoliceOld1.png",policeold2:"PoliceOld2.png",policet:"PoliceT.png",tiptruck:"TipTruck.png",tiptruck2:"TipTruck2.png",tribike:"TriBike.png",tribike2:"TriBike2.png",tribike3:"TriBike3.png",bf400:"BF400.png",carbonrs:"CarbonRS.png",rcbandito:"RCBandito.png",slamvan4:"SlamVan4.png",slamvan5:"SlamVan5.png",slamvan6:"SlamVan6.png",bfinjection:"Bfinject.png",oracle:"Oracle2.png",oracle2:"Oracle.png",hunter:"Hunt.png",phoenix:"Pheonix.png",kosatka:"Kosatka_.jpg",marquis:"Marquis_.jpg",annihilator2:"Annihilator2_.jpg",dominator7:"DominatorASP.png",tailgater2:"TailgaterS.png",manchez3:"Manchez3_temp.png",powersurge:"Powersurge_temp.png",broadway:"Broadway_temp.png",eudora:"Eudora_temp.png",tahoma:"Tahoma_temp.png",tulip2:"Tulip2_temp.png",issi8:"Issi8_temp.png",cargoplane2:"Cargoplane2_temp.png"};
+const wikiFile = (name, w) => `${WIKI_BASE}/wiki/Special:FilePath/${encodeURIComponent(name)}` + (w ? `?width=${w}` : "");
+
+/* ---------- База ---------- */
+let DB = [];
+function buildDB() {
+  const cats = CATS.map(c => ({ key: c[0], name: c[1], icon: c[2], head: c[3], items: [] }));
+  const wikiOK = Object.keys(WIKI).length > 300;
+  const mk = (id, cat) => ({ id, title: titleOf(id), cat: cat.name, hash: (WIKI[id] || {}).hash || "", dlc: (WIKI[id] || {}).dlc || "" });
+  if (wikiOK) {
+    Object.keys(WIKI).forEach(id => {
+      const h = WIKI[id].cat;
+      let cat = cats.find(c => c.head === h);
+      if (!cat) { cat = { key: "w_" + h.toLowerCase().replace(/\W+/g, "_"), name: h || "Другое", icon: "fa-car", head: h, items: [] }; cats.push(cat); }
+      cat.items.push(mk(id, cat));
+    });
+  } else {
+    cats.forEach(c => CATS.find(x => x[0] === c.key)[4].split(" ").forEach(id => c.items.push(mk(id, c))));
+  }
+  const all = { key: "all", name: "Весь автопарк", icon: "fa-car-burst", items: [] };
+  const seen = new Set();
+  const live = cats.filter(c => c.items.length);
+  live.forEach(c => c.items.forEach(it => { if (!seen.has(it.id)) { seen.add(it.id); all.items.push(it); } }));
+  DB = [all, ...live, { key: "colors", name: "HTML цвета", icon: "fa-palette", colors: [
+    ["RMRP Violet","#8B5CF6"],["RMRP Blue","#3B82F6"],["RMRP Pink","#EC4899"],["RMRP Black","#08060F"],["Pure White","#FFFFFF"],["Success Green","#10B981"],
+    ["Info Blue","#3B82F6"],["Warning Orange","#F59E0B"],["Taxi Yellow","#FFC30F"],["Gold","#FFD700"]] }];
+  $("sTotal").innerText = all.items.length;
+  $("sCats").innerText = live.length;
+}
+
+let cur = "all", shown = PAGE, query = "";
+
+function tabs() {
+  $("cats").innerHTML = "";
+  DB.forEach(c => {
+    const b = document.createElement("button");
+    b.className = "cat-btn" + (c.key === cur ? " active" : "");
+    b.innerHTML = `<i class="fa-solid ${c.icon}"></i>${c.name}<span class="n">${(c.items || c.colors).length}</span>`;
+    b.onclick = () => { cur = c.key; query = ""; $("q").value = ""; shown = PAGE; tabs(); render(); window.scrollTo(0, 0); };
+    $("cats").appendChild(b);
+  });
+}
+
+function sources(id) {
+  const s = [], w = WIKI[id];
+  if (LOCAL_IMG) { const b = LOCAL_IMG.replace("{id}", id); s.push(b + ".webp", b + ".png", b + ".jpg"); }
+  if (w) s.push(w.full, w.thumb);
+  if (FILES[id]) s.push(wikiFile(FILES[id], 500), wikiFile(FILES[id]));
+  else { const n = cap(id); s.push(wikiFile(n + ".png", 500), wikiFile(n + ".jpg", 500), wikiFile(n + ".png"), wikiFile(n + ".jpg")); }
+  s.push(`https://docs.fivem.net/vehicles/${id}.webp`);
+  s.push(`https://raw.githubusercontent.com/DurtyFree/gta-v-data-dumps/master/images/vehicles/${id}.png`);
+  return s;
+}
+function attachPhoto(box, id) {
+  box.classList.add("loading");
+  const src = sources(id); let i = 0;
+  const img = new Image();
+  img.loading = "lazy"; img.alt = id; img.referrerPolicy = "no-referrer";
+  img.onload = () => box.classList.remove("loading");
+  img.onerror = () => {
+    if (++i < src.length) { img.src = src[i]; return; }
+    box.classList.remove("loading"); img.remove();
+    box.insertAdjacentHTML("beforeend", '<div class="nophoto"><i class="fa-solid fa-car-side"></i><span>Фото нет</span></div>');
+  };
+  img.src = src[0];
+  box.appendChild(img);
+}
+
+function currentList() {
+  const c = DB.find(x => x.key === cur) || DB[0];
+  const q = query;
+  let list = q ? DB[0].items.filter(it => it.title.toLowerCase().includes(q) || it.id.includes(q)) : (c.items || []);
+  return list;
+}
+
+function render() {
+  const c = DB.find(x => x.key === cur) || DB[0], v = $("view");
+  v.innerHTML = "";
+  $("title").innerHTML = query ? `Поиск: ${esc(query)}` : esc(c.name);
+  document.body.classList.toggle("is-colors", !!c.colors);
+  if (c.colors && !query) {
+    $("cnt").innerText = c.colors.length;
+    const g = document.createElement("div"); g.className = "colors";
+    c.colors.forEach(([n, hex]) => {
+      const dark = ["#8B5CF6","#08060F","#3B82F6","#10B981","#EC4899"].includes(hex.toUpperCase());
+      const d = document.createElement("div"); d.className = "color";
+      d.innerHTML = `<div class="sw" style="background:${hex};color:${dark ? "#fff" : "#000"}">${hex}</div><div class="cn">${n}</div>`;
+      d.onclick = () => copy(hex, "HEX скопирован: " + hex);
+      g.appendChild(d);
+    });
+    v.appendChild(g); return;
+  }
+  const list = currentList();
+  $("cnt").innerText = list.length;
+  $("title").innerHTML += ` <small>${list.length}</small>`;
+  const g = document.createElement("div"); g.className = "grid"; v.appendChild(g);
+  if (!list.length) { g.innerHTML = '<div class="empty">Ничего не найдено</div>'; return; }
+
+  const draw = (from, to) => list.slice(from, to).forEach(car => {
+    const d = document.createElement("article"); d.className = "card";
+    d.innerHTML = `<div class="photo"><span class="tag">${esc(car.cat)}</span>${car.dlc ? `<span class="dlc" title="${esc(car.dlc)}">${esc(car.dlc)}</span>` : ""}</div>
+      <div class="info"><div class="name">${esc(car.title)}</div>
+        <div class="plate" role="button" tabindex="0" title="Скопировать ID"><div class="reg"><span>RU</span><span>RM</span></div><div class="code">${car.id}</div><div class="cp"><i class="fa-regular fa-copy"></i></div></div>
+        ${car.hash ? `<div class="meta"><span>HASH</span><button class="hash" title="Скопировать хэш">${car.hash}</button></div>` : ""}</div>`;
+    attachPhoto(d.querySelector(".photo"), car.id);
+    const pl = d.querySelector(".plate");
+    pl.onclick = () => copy(car.id, "ID скопирован: " + car.id);
+    pl.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pl.click(); } };
+    const hb = d.querySelector(".hash");
+    if (hb) hb.onclick = () => copy(car.hash, "Хэш скопирован: " + car.hash);
+    g.appendChild(d);
+  });
+  draw(0, shown);
+
+  if (list.length > shown) {
+    const m = document.createElement("button"); m.className = "more";
+    const upd = () => m.textContent = `Показать ещё (${list.length - shown})`;
+    upd();
+    m.onclick = () => { const f = shown; shown += PAGE; draw(f, shown); if (shown >= list.length) m.remove(); else upd(); };
+    v.appendChild(m);
+  }
+}
+
+function copy(text, msg) {
+  const done = () => { $("tt").innerText = msg; const t = $("toast"); t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 2000); };
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, done); else done();
+}
+
+$("q").addEventListener("input", e => { query = e.target.value.trim().toLowerCase(); shown = PAGE; render(); });
+
+/* старт: берём данные wiki (из кэша — мгновенно), затем рисуем */
+const wikiReady = Promise.race([loadWiki(), new Promise(r => setTimeout(() => r(false), 9000))]).then(ok => {
+  if (ok) { buildDB(); if (!DB.find(x => x.key === cur)) cur = "all"; tabs(); render(); }
+});
+buildDB(); tabs(); render();
+</script>
+</body>
+</html>
