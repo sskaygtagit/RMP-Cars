@@ -125,6 +125,14 @@ body{background-image:radial-gradient(900px 500px at 8% -5%,rgba(139,92,246,.18)
 .search input:focus{border-color:#8B5CF6;box-shadow:0 0 0 1px #8B5CF6,0 0 18px rgba(236,72,153,.2)}
 .btn-copy,.hash:hover{border-color:#EC4899}
 .card:hover{box-shadow:0 14px 30px rgba(0,0,0,.6),0 0 22px rgba(139,92,246,.22)}
+
+.fav{position:absolute;top:10px;right:10px;z-index:3;width:34px;height:34px;border-radius:50%;background:rgba(8,6,15,.8);border:1px solid var(--line);color:#fff;cursor:pointer;display:grid;place-items:center;transition:.15s;font-size:.9rem}
+.fav:hover{border-color:#EC4899;transform:scale(1.1)}
+.fav.on{background:var(--grad);border-color:transparent}
+.cgroup{font:700 .8rem 'Montserrat',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:26px 0 12px;padding-left:12px;border-left:3px solid #8B5CF6}
+.color .sw small{display:block;font-size:.62rem;opacity:.75;margin-top:4px;text-align:center}
+.color .sw{flex-direction:column}
+.empty i{display:block;font-size:2rem;margin-bottom:12px;color:#8B5CF6}
 </style>
 </head>
 <body>
@@ -138,7 +146,7 @@ body{background-image:radial-gradient(900px 500px at 8% -5%,rgba(139,92,246,.18)
     <div class="stats"><div><b id="sTotal">0</b><span>моделей</span></div><div><b id="sCats">0</b><span>классов</span></div><div><b id="cnt">0</b><span>показано</span></div></div>
   </section>
   <div class="top">
-    <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input id="q" type="search" placeholder="Название или ID: adder, pbus2, police…" autocomplete="off"></div>
+    <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input id="q" type="search" placeholder="Поиск: adder, pbus2, зентурно, лодка, полиция…" autocomplete="off"></div>
       </div>
   <h2 class="sechead" id="title"></h2>
   <div id="view"></div>
@@ -155,6 +163,34 @@ const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 const titleOf = id => NAMES[id] || cap(id).replace(/(\D)(\d+)$/, "$1 $2");
 const esc = s => String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
 const $ = id => document.getElementById(id);
+
+/* ---------- Русский поиск ---------- */
+const TR = {а:"a",б:"b",в:"v",г:"g",д:"d",е:"e",ё:"e",ж:"j",з:"z",и:"i",й:"i",к:"k",л:"l",м:"m",н:"n",о:"o",п:"p",р:"r",с:"s",т:"t",у:"u",ф:"f",х:"h",ц:"ts",ч:"ch",ш:"sh",щ:"sh",ъ:"",ы:"i",ь:"",э:"e",ю:"yu",я:"ya"};
+const translit = s => s.toLowerCase().replace(/[а-яё]/g, ch => TR[ch] ?? "");
+/* «звуковая» нормализация: zentorno и «зентурно» дают одну строку */
+const norm = s => s.toLowerCase().replace(/ph/g,"f").replace(/dj/g,"j").replace(/c(?=[eiy])/g,"s").replace(/ck/g,"k").replace(/[cq]/g,"k")
+  .replace(/x/g,"ks").replace(/w/g,"v").replace(/y/g,"i").replace(/h/g,"").replace(/[^a-z0-9]/g,"")
+  .replace(/(.)\1+/g,"$1").replace(/[aeiou]/g,"a").replace(/a+/g,"a");
+/* русские слова → категории */
+const KEYS = [["лодк|катер|яхт|судно|водн","boats"],["коммерч|грузов|фур|тягач","commercials"],["компакт","compacts"],["купе","coupes"],["велосипед|велик","cycles"],
+ ["полици|скор|пожар|мент|экстрен|шериф|фбр|спасат","emergency"],["вертол","helicopters"],["индустр|строит|бульдоз|самосвал|бетон|экскават","industrial"],
+ ["воен|танк|армей|бтр|броне","military"],["мото|байк|мопед|скутер","motorcycles"],["мускул","muscle"],["внедорож|джип|багги|монстр|пикап","offroad"],
+ ["формул|болид","openwheel"],["самол|авиа|дирижабл|аэро","planes"],["кроссовер|паркетник|suv","suvs"],["седан","sedans"],["автобус|такси|городск|мусор","service"],
+ ["спорткар|спортив","sports"],["классик|ретро","sportsclassic"],["суперкар|гиперкар|супер","super"],["прицеп","trailer"],["поезд|электричк|метро|вагон","trains"],
+ ["утилит|трактор|погрузчик|эвакуатор|рабоч","utility"],["фургон|вэн|микроавтобус","vans"]].map(([r, k]) => [new RegExp(r), k]);
+function matchItem(it, q, nq, ck) {
+  if (ck.size && ck.has(it.ck)) return true;
+  if (it.title.toLowerCase().includes(q) || it.id.includes(q)) return true;
+  return nq.length > 1 && (it.nid.includes(nq) || it.nti.includes(nq));
+}
+
+/* ---------- Избранное ---------- */
+let FAVS = new Set();
+try { FAVS = new Set(JSON.parse(localStorage.getItem("rmrp_favs") || "[]")); } catch (e) {}
+const saveFavs = () => { try { localStorage.setItem("rmrp_favs", JSON.stringify([...FAVS])); } catch (e) {} };
+function refreshFavs() { const f = DB.find(x => x.key === "favs"); if (f) f.items = DB[0].items.filter(i => FAVS.has(i.id)); }
+function toggleFav(id) { FAVS.has(id) ? FAVS.delete(id) : FAVS.add(id); saveFavs(); refreshFavs(); const n = document.querySelector('.cat-btn[data-key="favs"] .n'); if (n) n.textContent = FAVS.size; }
+
 
 /* ---------- Данные с RAGE MP Wiki ---------- */
 const WIKI_BASE = "https://wiki.rage.mp";
@@ -199,11 +235,21 @@ const FILES = {cogcabrio:"CogCabrio.png",fbi:"FBI.png",fbi2:"FBI2.png",firetruk:
 const wikiFile = (name, w) => `${WIKI_BASE}/wiki/Special:FilePath/${encodeURIComponent(name)}` + (w ? `?width=${w}` : "");
 
 /* ---------- База ---------- */
+const PALETTE = [
+ ["Фирменные RMRP",[["Violet","#8B5CF6"],["Blue","#3B82F6"],["Pink","#EC4899"],["Deep Purple","#5B21B6"],["Indigo","#4F46E5"],["Magenta","#D946EF"],["Night","#08060F"],["Panel","#13101F"]]],
+ ["Красные и оранжевые",[["Red","#EF4444"],["Crimson","#DC143C"],["Rose","#F43F5E"],["Orange","#F97316"],["Amber","#F59E0B"],["Coral","#FF7F50"],["Tomato","#FF6347"],["Brick","#B22222"]]],
+ ["Жёлтые и зелёные",[["Taxi Yellow","#FFC30F"],["Gold","#FFD700"],["Lemon","#FDE047"],["Lime","#84CC16"],["Green","#22C55E"],["Emerald","#10B981"],["Forest","#166534"],["Mint","#6EE7B7"]]],
+ ["Синие и голубые",[["Sky","#0EA5E9"],["Cyan","#06B6D4"],["Teal","#14B8A6"],["Azure","#2563EB"],["Navy","#1E3A8A"],["Ice","#BAE6FD"],["Turquoise","#40E0D0"],["Steel","#4682B4"]]],
+ ["Фиолетовые и розовые",[["Purple","#A855F7"],["Lavender","#C4B5FD"],["Orchid","#DA70D6"],["Fuchsia","#E879F9"],["Hot Pink","#FF69B4"],["Pink Light","#F9A8D4"],["Plum","#7E22CE"],["Berry","#9D174D"]]],
+ ["Нейтральные",[["White","#FFFFFF"],["Silver","#CBD5E1"],["Gray","#94A3B8"],["Slate","#475569"],["Graphite","#1F2937"],["Black","#000000"],["Brown","#8B5A2B"],["Beige","#F5E6CC"]]],
+ ["Градиенты (CSS)",[["RMRP","linear-gradient(120deg,#8B5CF6,#3B82F6,#EC4899)"],["Sunset","linear-gradient(120deg,#F97316,#EC4899,#8B5CF6)"],["Ocean","linear-gradient(120deg,#06B6D4,#3B82F6,#8B5CF6)"],["Neon","linear-gradient(120deg,#22D3EE,#A855F7,#F472B6)"]]]
+];
+const countOf = c => c.colors ? c.colors.reduce((n, g) => n + g[1].length, 0) : c.items.length;
 let DB = [];
 function buildDB() {
   const cats = CATS.map(c => ({ key: c[0], name: c[1], icon: c[2], head: c[3], items: [] }));
   const wikiOK = Object.keys(WIKI).length > 300;
-  const mk = (id, cat) => ({ id, title: titleOf(id), cat: cat.name, hash: (WIKI[id] || {}).hash || "", dlc: (WIKI[id] || {}).dlc || "" });
+  const mk = (id, cat) => ({ id, title: titleOf(id), nid: norm(id), nti: norm(titleOf(id)), ck: cat.key, cat: cat.name, hash: (WIKI[id] || {}).hash || "", dlc: (WIKI[id] || {}).dlc || "" });
   if (wikiOK) {
     Object.keys(WIKI).forEach(id => {
       const h = WIKI[id].cat;
@@ -218,9 +264,8 @@ function buildDB() {
   const seen = new Set();
   const live = cats.filter(c => c.items.length);
   live.forEach(c => c.items.forEach(it => { if (!seen.has(it.id)) { seen.add(it.id); all.items.push(it); } }));
-  DB = [all, ...live, { key: "colors", name: "HTML цвета", icon: "fa-palette", colors: [
-    ["RMRP Violet","#8B5CF6"],["RMRP Blue","#3B82F6"],["RMRP Pink","#EC4899"],["RMRP Black","#08060F"],["Pure White","#FFFFFF"],["Success Green","#10B981"],
-    ["Info Blue","#3B82F6"],["Warning Orange","#F59E0B"],["Taxi Yellow","#FFC30F"],["Gold","#FFD700"]] }];
+  DB = [all, { key: "favs", name: "Избранное", icon: "fa-heart", items: [] }, ...live, { key: "colors", name: "HTML цвета", icon: "fa-palette", colors: PALETTE }];
+  refreshFavs();
   $("sTotal").innerText = all.items.length;
   $("sCats").innerText = live.length;
 }
@@ -232,7 +277,8 @@ function tabs() {
   DB.forEach(c => {
     const b = document.createElement("button");
     b.className = "cat-btn" + (c.key === cur ? " active" : "");
-    b.innerHTML = `<i class="fa-solid ${c.icon}"></i>${c.name}<span class="n">${(c.items || c.colors).length}</span>`;
+    b.dataset.key = c.key;
+    b.innerHTML = `<i class="fa-solid ${c.icon}"></i>${c.name}<span class="n">${countOf(c)}</span>`;
     b.onclick = () => { cur = c.key; query = ""; $("q").value = ""; shown = PAGE; tabs(); render(); window.scrollTo(0, 0); };
     $("cats").appendChild(b);
   });
@@ -266,7 +312,12 @@ function attachPhoto(box, id) {
 function currentList() {
   const c = DB.find(x => x.key === cur) || DB[0];
   const q = query;
-  let list = q ? DB[0].items.filter(it => it.title.toLowerCase().includes(q) || it.id.includes(q)) : (c.items || []);
+  let list = c.items || [];
+  if (q) {
+    const ru = /[а-яё]/.test(q), nq = ru ? norm(translit(q)) : "";
+    const ck = new Set(ru ? KEYS.filter(([r]) => r.test(q)).map(k => k[1]) : []);
+    list = DB[0].items.filter(it => matchItem(it, q, nq, ck));
+  }
   return list;
 }
 
@@ -276,30 +327,44 @@ function render() {
   $("title").innerHTML = query ? `Поиск: ${esc(query)}` : esc(c.name);
   document.body.classList.toggle("is-colors", !!c.colors);
   if (c.colors && !query) {
-    $("cnt").innerText = c.colors.length;
-    const g = document.createElement("div"); g.className = "colors";
-    c.colors.forEach(([n, hex]) => {
-      const dark = ["#8B5CF6","#08060F","#3B82F6","#10B981","#EC4899"].includes(hex.toUpperCase());
-      const d = document.createElement("div"); d.className = "color";
-      d.innerHTML = `<div class="sw" style="background:${hex};color:${dark ? "#fff" : "#000"}">${hex}</div><div class="cn">${n}</div>`;
-      d.onclick = () => copy(hex, "HEX скопирован: " + hex);
-      g.appendChild(d);
+    $("cnt").innerText = countOf(c);
+    const lum = h => { const n = parseInt(h.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)); };
+    c.colors.forEach(([gname, list]) => {
+      v.insertAdjacentHTML("beforeend", `<div class="cgroup">${gname}</div>`);
+      const g = document.createElement("div"); g.className = "colors";
+      list.forEach(([n, val]) => {
+        const grad = val.startsWith("linear");
+        const rgb = grad ? "CSS gradient" : `rgb(${parseInt(val.slice(1,3),16)}, ${parseInt(val.slice(3,5),16)}, ${parseInt(val.slice(5,7),16)})`;
+        const d = document.createElement("div"); d.className = "color";
+        d.innerHTML = `<div class="sw" style="background:${val};color:${grad || lum(val) < 150 ? "#fff" : "#000"}">${grad ? "" : val}<small>${rgb}</small></div><div class="cn">${n}</div>`;
+        d.onclick = () => copy(val, "Скопировано: " + (grad ? n : val));
+        g.appendChild(d);
+      });
+      v.appendChild(g);
     });
-    v.appendChild(g); return;
+    return;
   }
   const list = currentList();
   $("cnt").innerText = list.length;
   $("title").innerHTML += ` <small>${list.length}</small>`;
   const g = document.createElement("div"); g.className = "grid"; v.appendChild(g);
-  if (!list.length) { g.innerHTML = '<div class="empty">Ничего не найдено</div>'; return; }
+  if (!list.length) { g.innerHTML = cur === "favs" && !query ? '<div class="empty"><i class="fa-regular fa-heart"></i>Здесь пока пусто. Нажми на сердечко на карточке машины, чтобы сохранить её.</div>' : '<div class="empty">Ничего не найдено</div>'; return; }
 
   const draw = (from, to) => list.slice(from, to).forEach(car => {
     const d = document.createElement("article"); d.className = "card";
-    d.innerHTML = `<div class="photo"><span class="tag">${esc(car.cat)}</span>${car.dlc ? `<span class="dlc" title="${esc(car.dlc)}">${esc(car.dlc)}</span>` : ""}</div>
+    d.innerHTML = `<div class="photo"><span class="tag">${esc(car.cat)}</span><button class="fav${FAVS.has(car.id) ? " on" : ""}" title="В избранное" aria-label="В избранное"><i class="fa-${FAVS.has(car.id) ? "solid" : "regular"} fa-heart"></i></button>${car.dlc ? `<span class="dlc" title="${esc(car.dlc)}">${esc(car.dlc)}</span>` : ""}</div>
       <div class="info"><div class="name">${esc(car.title)}</div>
         <div class="plate" role="button" tabindex="0" title="Скопировать ID"><div class="reg"><span>RU</span><span>RM</span></div><div class="code">${car.id}</div><div class="cp"><i class="fa-regular fa-copy"></i></div></div>
         ${car.hash ? `<div class="meta"><span>HASH</span><button class="hash" title="Скопировать хэш">${car.hash}</button></div>` : ""}</div>`;
     attachPhoto(d.querySelector(".photo"), car.id);
+    const fb = d.querySelector(".fav");
+    fb.onclick = () => {
+      toggleFav(car.id);
+      if (cur === "favs") { render(); return; }
+      const on = FAVS.has(car.id);
+      fb.classList.toggle("on", on);
+      fb.firstChild.className = `fa-${on ? "solid" : "regular"} fa-heart`;
+    };
     const pl = d.querySelector(".plate");
     pl.onclick = () => copy(car.id, "ID скопирован: " + car.id);
     pl.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pl.click(); } };
